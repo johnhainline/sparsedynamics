@@ -73,7 +73,7 @@ def toMatFile(dflist):
 	# saves column names as a strings in varlist
 
 	# save prices
-	df = pd.concat(dflist,axis=1,sort=True)
+	df = pd.concat(dflist,axis=1)
 	df = df.dropna()
 	dfmat = df.values
 	scipy.io.savemat('marketdata.mat', mdict={'mktdata': dfmat})
@@ -121,12 +121,12 @@ if __name__ == "__main__":
 
 
 	# stocks and which data
-	stocklist = ['GOOGL','AAPL','ADP','ADBE','ATVI']
+	stocklist = ['GOOGL','AAPL','ADP','ADBE','ATVI','MSFT']
 	column_list = ['adjusted close',]
 
 	# build one df
 	dfs = [getLocalStock(s,column_list) for s in stocklist]
-	mdf = pd.concat(dfs,axis=1,sort=True)
+	mdf = pd.concat(dfs,axis=1)
 	mdf = mdf.dropna()
 
 	# get day percent change
@@ -135,9 +135,13 @@ if __name__ == "__main__":
 	# get smoothed version of data
 	spdf = gaussSmooth(pdf)
 
-	# plot original and smooth (of just google)
-	googdf = pd.concat([pdf['GOOGL - adjusted close'],spdf['GOOGL - adjusted close']],axis=1,sort=True)
-	googdf.plot()
-
+	# plot original and smooth (of just google and microsoft)
+	msftdf = pd.concat([pdf['MSFT - adjusted close'],spdf['MSFT - adjusted close']],axis=1)
+	googdf = pd.concat([pdf['GOOGL - adjusted close'],spdf['GOOGL - adjusted close']],axis=1)
+	
+	bothdf = pd.concat([msftdf,googdf],axis=1)
+	bothdf.columns = ['MSFT raw', 'MSFT smooth', 'GOOGL raw', 'GOOGL smooth']
+	bothdf.plot()
+	plt.show()
 	# polynomials for finding model
 	# ldf = nDimLegendre(mdf,2)
