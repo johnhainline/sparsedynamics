@@ -154,7 +154,7 @@ class BaseImage:
                 except IndexError:
                     pass
 
-        ok_miss = ['animal_number']
+        ok_miss = ['animal_number','subject_weight','dose','injection_time']
         failed = [kw for kw in kwrds if params[kw] is None and kw not in ok_miss]
         if any(failed):
             raise ValueError('Failed to parse parameters: {}'.format(', '.join(failed)))
@@ -565,11 +565,40 @@ class BaseImage:
         self.img_data = np.flip(self.img_data,axes_to_flip[0])
         self.img_data = np.flip(self.img_data,axes_to_flip[1])
 
-    def split_on_axis(self,axis):
+    def split_on_axis(self,axis,matrix=None):
+        if matrix is None:
+            matrix = self.img_data
         axis = self.get_axis(axis)
-        mats = np.split(self.img_data, self.img_data.shape[axis], axis=axis)
+        mats = np.split(matrix, matrix.shape[axis], axis=axis)
         mats = [np.squeeze(m) for m in mats]
         return mats
+
+    def animate_matrix(self,matrix=None,axis='y',method='sequential',scale=5.0,interval=10):
+        if method not in ['sequential','max','sum']:
+            raise ValueError('Bad method in animate_matrix: {}'.format(method))
+
+        view_ax = self.get_axis(axis)
+
+        if matrix is None:
+            matrix = self.img_data
+
+        
+        if method in ['max','sum']:
+            frames = [getattr(f,method)(axis=view_ax) for f in self.split_on_axis('t')]
+        elif method == 'sequential':
+            frames = []
+            for mat in self.split_on_axis('t',matrix=matrix):
+                frames += self.split_on_axis(view_ax,mat)
+
+        frames = [normalize(f)*scale for f in frames]
+                
+        fig = plt.figure()
+        ims = [[plt.imshow(frame, cmap="gray",clim=(0,1), animated=True)] for frame in frames]
+        ani = animation.ArtistAnimation(fig, ims, interval=interval, blit=True)
+        plt.show()
+
+
+
 
 
 class SubImage(BaseImage):
