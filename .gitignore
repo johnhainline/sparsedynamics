@@ -1,2 +1,4 @@
 .DS_Store
+.idea/
+*.pyc
 pet_experiments/single_mouse_pet
