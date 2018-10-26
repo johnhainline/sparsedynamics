@@ -1,4 +1,6 @@
 
+import numpy as np
+import pandas as pd
 import os
 import matplotlib
 matplotlib.use('TkAgg')
@@ -9,12 +11,17 @@ from load_img.baseimage import PETImage, CTImage, normalize
 
 
 # put filepath to image to open
-filepath = os.path.join("data", "mpet3721a_em1_v1_s4.pet.img")
+filepath = os.path.join("data", "mpet3715b_em1_v1.pet.img")
 
 # load image into memory
 my_img = PETImage(filepath=filepath)
 my_img.load_image()
 
+# convert image to Pandas DataFrame
+# pd.DataFrame({'z': my_img.img_data[:, 0]})
+
+# data is [x,y,z,t] array of float64
+data = np.swapaxes(my_img.img_data, 0, 2)
 
 
 # get_axis is just a map from x,y,z,t to the 0,1,2,3 which numpy uses
