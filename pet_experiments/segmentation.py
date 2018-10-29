@@ -29,7 +29,7 @@ def pca_kmeans_segmentation(pet_img, **kwargs):  # nclusters=10, nfeatures=None,
 	keys = kwargs.keys()
 
 	# specify limits of region to segment
-	if 'roi_lims' in keys:
+	if 'roi_lims' in keys and kwargs['roi_lims'] is not None:
 		(zmin,zmax),(ymin,ymax),(xmin,xmax) = kwargs['roi_lims']
 		roi = roi[zmin:zmax,ymin:ymax,xmin:xmax,:]
 		zd,yd,xd,td = roi.shape
@@ -157,59 +157,64 @@ if __name__ == '__main__':
 	# iterate over image files in directory
 	for fname in os.listdir('single_mouse_pet'):
 
-		if fname.endswith('.pet.img') and not fname.startswith('.'):
+		try:
 
-			filepath = os.path.join("single_mouse_pet",fname)
+			if fname.endswith('.pet.img') and not fname.startswith('.'):
 
-			# load image
-			img = PETImage(filepath=filepath)
-			img.load_image()
-			Ns = img.img_data.shape
+				filepath = os.path.join("single_mouse_pet",fname)
 
-			# select the middle z=60,y=50,x=40 cube of each frame; y axis might need to be wider
-			Ws = (60,50,40)
-			roi_lims = [(int((N-W)/2),int((N+W)/2)) for N,W in zip(Ns,Ws)]
+				# load image
+				img = PETImage(filepath=filepath)
+				img.load_image()
+				Ns = img.img_data.shape
 
-			# select options for segmentation and run segmentation
-			options = {
-				'roi_lims' : roi_lims,
-				'plot' : True,
-				'nfeatures' : 40,
-				'nclusters' : 20
+				# select the middle z=Ws[0],y=Ws[1],x=Ws[2] prism of each frame; y axis might need to be wider
+				Ws = (128,60,40)
+				roi_lims = [(int((N-W)/2),int((N+W)/2)) for N,W in zip(Ns,Ws)]
+
+				# select options for segmentation and run segmentation
+				print('Clustering image voxels...')
+				options = {
+					'roi_lims' : roi_lims,
+					'plot' : True,
+					'nfeatures' : 6,
+					'nclusters' : 20
+					}
+				masks, roi = pca_kmeans_segmentation(img,**options)
+
+				# done with original image data
+				img.unload_image()
+
+				# apply mask to roi
+				new_rois = apply_masks(masks,roi)
+
+				# animate new ROIs
+				collapse_method = 'sum'	# use sum or max
+				view_ax = 'y'
+				with_roi = True		# whether to show original roi next to animated mask
+				wroi_map = {
+					2 : 0,	# x->y
+					0 : 1,	# z->x
+					1 : 1	# y->x
 				}
-			masks, roi = pca_kmeans_segmentation(img,**options)
 
-			# done with original image data
-			img.unload_image()
+				# # animate each segment
+				# view_ax = img.get_axis(view_ax)
+				# for nroi in new_rois:
+				# 	nroi = normalize(getattr(nroi,collapse_method)(axis=view_ax))
+				# 	if with_roi:
+				# 		wroi_ax = wroi_map[view_ax]
+				# 		roi_frames  = normalize(getattr(roi,collapse_method)(axis=view_ax))
+				# 		nroi = np.concatenate([nroi,roi_frames],axis=wroi_ax)
+				# 	frames = np.split(nroi, nroi.shape[-1], axis=-1)
+				# 	frames = [np.squeeze(f) for f in frames]
+				# 	animate_frames(frames)
 
-			# apply mask to roi
-			new_rois = apply_masks(masks,roi)
-
-			# animate new ROIs
-			collapse_method = 'sum'	# use sum or max
-			view_ax = 'y'
-			with_roi = True		# whether to show original roi next to animated mask
-			wroi_map = {
-				2 : 0,	# x->y
-				0 : 1,	# z->x
-				1 : 1	# y->x
-			}
-			view_ax = img.get_axis(view_ax)
-			for nroi in new_rois:
-				try:
-					nroi = getattr(nroi,collapse_method)(axis=view_ax)
-					if with_roi:
-						wroi_ax = wroi_map[view_ax]
-						roi_frames  = getattr(roi,collapse_method)(axis=view_ax)
-						nroi = np.concatenate([nroi,roi_frames],axis=wroi_ax)
-					frames = np.split(nroi, nroi.shape[-1], axis=-1)
-					frames = [np.squeeze(f) for f in frames]
-					animate_frames(frames)
-				except KeyboardInterrupt:
-					plt.close()
-					cont = input('Continue to next image?\nEnter empty string to continue; enter any other string to stop.')
-					if cont != '':
-						break
+		except KeyboardInterrupt:
+			plt.close()
+			cont = input('\nContinue to next image?\nEnter empty string to continue; enter any other string to stop.')
+			if cont != '':
+				break
 
 
 
