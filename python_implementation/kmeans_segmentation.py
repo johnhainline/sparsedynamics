@@ -83,6 +83,76 @@ def pca_kmeans_segmentation(pet_img, **kwargs):  # nclusters=10, nfeatures=None,
 	return masks, roi
 
 
+def fourier_kmeans_segmentation(pet_img, **kwargs):  # nclusters=10, nfeatures=None, options=None):
+
+	default_options = {
+		'nclusters' : 10,
+		'n_init' : 20,
+		'plot' : True
+	}
+
+	# load and unload image outside of this routine
+	pet_img.check_data()
+
+	# initialize ROI as whole matrix
+	roi = pet_img.img_data
+	zd,yd,xd,td = roi.shape
+
+	# get kwargs
+	keys = kwargs.keys()
+
+	# specify limits of region to segment
+	if 'roi_lims' in keys and kwargs['roi_lims'] is not None:
+		(zmin,zmax),(ymin,ymax),(xmin,xmax) = kwargs['roi_lims']
+		roi = roi[zmin:zmax,ymin:ymax,xmin:xmax,:]
+		zd,yd,xd,td = roi.shape
+
+	# other kwargs		
+	nclusters = kwargs['nclusters'] if 'nclusters' in keys else default_options['nclusters']
+	n_init = kwargs['n_init'] if 'n_init' in keys else default_options['n_init']
+	plot = kwargs['plot'] if 'plot' in keys else default_options['plot']
+	nfeatures = kwargs['nfeatures'] if 'nfeatures' in keys else td
+
+	# default to use all principal components if not specified
+	nfeatures = td if nfeatures is None else nfeatures
+
+	# number of voxels to analyze
+	N = zd*yd*xd
+
+	# raw data matrix
+	X = roi.reshape(N,td)
+
+	# fourier transform along time axis
+	Xf = abs(np.fft.fft(X,axis=-1))
+
+	# # SVD of data matrix
+	# U, S, Vh = np.linalg.svd(Xf.T.dot(Xf))
+	# # transform project each voxel's time series onto eigenvectors
+	# # U^T: X -> Xh
+	# X_h = U[:,:nfeatures].T.dot(Xf.T)
+
+	X_h = Xf[:,0:nfeatures].T
+
+	# use kmeans clustering on transformed data
+	kmeans = KMeans(init='k-means++', n_clusters=nclusters, n_init=n_init)
+	kmeans.fit(X_h.T)
+	Z = kmeans.predict(X_h.T)
+
+	# create masks for clustered data
+	root_mask = np.linspace(0,N-1,N)	# a skeleton for actual masks
+	masks = []
+	for clust in set(Z):
+		mask_func = np.vectorize(lambda x:int(Z[int(x)]==clust))
+		masks.append(mask_func(root_mask).reshape(zd,yd,xd))
+
+	print('Created {} masks of image'.format(len(masks)))
+
+	if plot:
+		plot_masks(roi,masks,**kwargs)
+
+	return masks, roi
+
+
 
 
 def plot_masks(roi, masks, **kwargs):
