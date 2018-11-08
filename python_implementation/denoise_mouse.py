@@ -1,11 +1,14 @@
-
 from skimage.io import imread, imsave
 import numpy as np
 import os
 import pathlib
 
 from load_img.baseimage import PETImage, CTImage, normalize
-from skimage.restoration import (denoise_wavelet, estimate_sigma)
+from skimage.measure import (compare_psnr, compare_ssim, compare_mse, compare_nrmse)
+from skimage.restoration import (denoise_wavelet, denoise_tv_chambolle, estimate_sigma)
+
+import warnings
+warnings.filterwarnings("ignore")
 
 
 def add_gaussian_noise(image, mean, variance, seed=1234):
@@ -30,6 +33,8 @@ def add_poisson_noise(image, durations, seed=1234):
     greater_values = norm_image[greater]
     result[greater] = np.random.normal(greater_values, greater_values)
     result[less] = np.random.poisson(norm_image[less])
+
+    # undo our inverse proportionality
     result = np.divide(durations, result[:, :, :], out=np.zeros_like(result), where=result[:, :, :] != 0)
 
     # remove negative numbers
@@ -37,7 +42,7 @@ def add_poisson_noise(image, durations, seed=1234):
 
     # NOTE!!! If np.random.poisson could handle arbitrarily large integers we'd be fine, but we end up having to scale,
     # which means we end up calling poisson of a number less than 1, which is almost always 0, which effectively erases
-    #  a ton of data.
+    # a ton of data.
     return result
 
 
@@ -79,18 +84,29 @@ print("Generating noise...")
 noisy = add_poisson_noise(data, frame_durations)
 
 print("Saving noisy images...")
-nice_noisy = np.where(noisy < np.percentile(noisy, 95), noisy, 0.0)
+nice_noisy = np.where(noisy < np.percentile(noisy, 99), noisy, 0.0)
 save("noisy", nice_noisy)
 
 print("Estimating sigma...")
 # See http://scikit-image.org/docs/dev/auto_examples/filters/plot_denoise_wavelet.html
 # Estimate the average noise standard deviation across color channels.
-sigma_est = estimate_sigma(noisy, multichannel=True, average_sigmas=True)
+sigma_est = estimate_sigma(noisy, multichannel=False, average_sigmas=True)
 
 # Due to clipping in random_noise, the estimate will be a bit smaller than the specified sigma.
 print("Estimated Gaussian noise standard deviation = {}".format(sigma_est))
 
-denoised = denoise_wavelet(noisy, sigma=sigma_est, multichannel=True, mode='soft')
+print("Denoising...")
+denoised_wavelet = denoise_wavelet(noisy, sigma=sigma_est, multichannel=False, mode='soft')
+# denoised_tv = denoise_tv_chambolle(noisy)
 
 print("Saving denoised images...")
-save("denoised", denoised)
+save("denoised_wavelet", denoised_wavelet)
+# save("denoised_tv", denoised_tv)
+
+print("Compare images...")
+print("mse (noisy):\t" + str(compare_mse(data, noisy)))
+print("mse (wavelet):\t" + str(compare_mse(data, denoised_wavelet)))
+# print("mse (tv):\t\t" + str(compare_mse(data, denoised_tv)))
+print("psnr (noisy):\t" + str(compare_psnr(data, noisy)))
+print("psnr (wavelet):\t" + str(compare_psnr(data, denoised_wavelet)))
+# print("psnr (tv):\t\t" + str(compare_psnr(data, denoised_tv)))
