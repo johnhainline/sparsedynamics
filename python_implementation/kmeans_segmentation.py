@@ -18,8 +18,7 @@ def pca_kmeans_segmentation(pet_img, **kwargs):  # nclusters=10, nfeatures=None,
 
 	default_options = {
 		'nclusters' : 10,
-		'n_init' : 20,
-		'plot' : True
+		'n_init' : 20
 	}
 
 	# load and unload image outside of this routine
@@ -41,7 +40,6 @@ def pca_kmeans_segmentation(pet_img, **kwargs):  # nclusters=10, nfeatures=None,
 	# other kwargs		
 	nclusters = kwargs['nclusters'] if 'nclusters' in keys else default_options['nclusters']
 	n_init = kwargs['n_init'] if 'n_init' in keys else default_options['n_init']
-	plot = kwargs['plot'] if 'plot' in keys else default_options['plot']
 	nfeatures = kwargs['nfeatures'] if 'nfeatures' in keys else td
 
 	# default to use all principal components if not specified
@@ -77,8 +75,6 @@ def pca_kmeans_segmentation(pet_img, **kwargs):  # nclusters=10, nfeatures=None,
 
 	print('Created {} masks of image'.format(len(masks)))
 
-	if plot:
-		plot_masks(roi,masks,**kwargs)
 
 	return masks, roi
 
@@ -87,8 +83,7 @@ def fourier_kmeans_segmentation(pet_img, **kwargs):  # nclusters=10, nfeatures=N
 
 	default_options = {
 		'nclusters' : 10,
-		'n_init' : 20,
-		'plot' : True
+		'n_init' : 20
 	}
 
 	# load and unload image outside of this routine
@@ -110,7 +105,6 @@ def fourier_kmeans_segmentation(pet_img, **kwargs):  # nclusters=10, nfeatures=N
 	# other kwargs		
 	nclusters = kwargs['nclusters'] if 'nclusters' in keys else default_options['nclusters']
 	n_init = kwargs['n_init'] if 'n_init' in keys else default_options['n_init']
-	plot = kwargs['plot'] if 'plot' in keys else default_options['plot']
 	nfeatures = kwargs['nfeatures'] if 'nfeatures' in keys else td
 
 	# default to use all principal components if not specified
@@ -147,15 +141,13 @@ def fourier_kmeans_segmentation(pet_img, **kwargs):  # nclusters=10, nfeatures=N
 
 	print('Created {} masks of image'.format(len(masks)))
 
-	if plot:
-		plot_masks(roi,masks,**kwargs)
 
 	return masks, roi
 
 
 
 
-def plot_masks(roi, masks, **kwargs):
+def plot_segments(segments, **kwargs):
 
 	ax_map = {'z':0,'y':1,'x':2,'t':3}
 
@@ -164,7 +156,8 @@ def plot_masks(roi, masks, **kwargs):
 		'mask_collapse' : np.sum,
 		'time_collapse' : np.max,
 		'spatial_collapse' : np.sum,
-		'fig_size' : (40,50)
+		'figsize' : (40,50),
+		'fontsize' : 36
 	}
 
 	keys = kwargs.keys()
@@ -172,7 +165,8 @@ def plot_masks(roi, masks, **kwargs):
 	mask_collapse = kwargs['mask_collapse'] if 'mask_collapse' in keys else default_options['mask_collapse']
 	time_collapse = kwargs['time_collapse'] if 'time_collapse' in keys else default_options['time_collapse']
 	spatial_collapse = kwargs['spatial_collapse'] if 'spatial_collapse' in keys else default_options['spatial_collapse']
-	fig_size = kwargs['fig_size'] if 'fig_size' in keys else default_options['fig_size']
+	figsize = kwargs['figsize'] if 'figsize' in keys else default_options['figsize']
+	fontsize = kwargs['fontsize'] if 'fontsize' in keys else default_options['fontsize']
 
 	# check and set np.ndarray axes
 	view_ax = ax_map[view_ax] if view_ax in ax_map.keys() else view_ax
@@ -182,23 +176,20 @@ def plot_masks(roi, masks, **kwargs):
 
 	# setup axes for plots
 	nc = 6
-	fig = plt.figure(figsize=fig_size)
+	fig = plt.figure(figsize=figsize)
 	axes = []
-	nplots = len(masks)+1
+	nplots = len(segments)
 	for k in range(nplots):
 	    ax = fig.add_subplot(1+nplots//nc,nc,k+1)
 	    ax.set_aspect('auto')
 	    axes.append(ax)
 
-	
-	# plot original image
-	roi_image = normalize(spatial_collapse(time_collapse(roi,axis=time_ax),axis=view_ax))
-	axes[0].imshow(roi_image, cmap="gray",clim=(0,1))
 
 	# plot each mask
-	for ax,premask in zip(axes[1:],masks):	
-	    fmask = np.apply_along_axis(mask_collapse,view_ax,premask)
+	for k,(ax,premask)in enumerate(zip(axes,segments)):	
+	    fmask = normalize(spatial_collapse(time_collapse(premask,axis=time_ax),axis=view_ax))
 	    ax.imshow(fmask, cmap='gray')
+	    ax.set_title('Segment ix: {}'.format(k),fontsize=36)
 	plt.tight_layout()
 	plt.show()
 
