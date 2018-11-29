@@ -1,8 +1,5 @@
-% older model
-% https://www.ebi.ac.uk/biomodels/MODEL1008120002#Overview
-
-% docs https://www.mathworks.com/help/simbio/ref/sbiosimulate.html
-
+% docs  https://www.mathworks.com/help/simbio/ref/sbiosimulate.html
+% paper https://www.ncbi.nlm.nih.gov/pmc/articles/PMC5026379/
 % model https://www.ebi.ac.uk/biomodels-main/BIOMD0000000619
 model = sbmlimport('data/BIOMD0000000619.xml');
 
@@ -23,20 +20,23 @@ config.StopTime = 25;
 %[t,x,names] = sbiosimulate(model,config,dose1);
 [t,x,names] = sbiosimulate(model,config);
 
-% plot the amount of APAP in the veins over time
+% plot the amount of APAP in venous blood over time
 figure(1);
 venousAPAPInLiters = x(:, 6) / 3.41;
 plot(t,venousAPAPInLiters);
 xlabel('Time (hrs)');
-ylabel('Venous APAP (mol/L)');
+ylabel('Venous APAP (Mol/L)');
 title('Metabolism of Acetaminophen (APAP)');
 % avoid exponential notation
 ax = gca;
 ax.YAxis.Exponent = 0;
 
-%figure(2);
-%plot(t,x(:, 11:17));
-%xlabel('Time');
-%ylabel('States');
-%title('States vs Time');
-%legend(names(11:end));
+compartments = [1,2,4,5,7,9,10];
+figure(2);
+plot(t,x(:, compartments));
+xlabel('Time (hrs)');
+ylabel('Compartment drug volume (Mol/L');
+title('States vs Time');
+legend(names(compartments));
+ax = gca;
+ax.YAxis.Exponent = 0;
