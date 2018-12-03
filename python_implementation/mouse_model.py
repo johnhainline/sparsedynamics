@@ -118,61 +118,101 @@ class OrganModel:
 
 
 
-mouse = OrganModel()
+def real_mouse():
+	mouse = OrganModel()
 
-# make state vars
-mouse.add_var('Venous Blood')
-mouse.add_var('Lung')
-mouse.add_var('Fat')
-mouse.add_var('Bone')
-mouse.add_var('Brain')
-mouse.add_var('Heart')
-mouse.add_var('Muscle')
-mouse.add_var('Skin')
-mouse.add_var('Liver')
-mouse.add_var('Kidney')
-mouse.add_var('Gut')
-mouse.add_var('Spleen')
-mouse.add_var('Arterial Blood')
+	# make state vars
+	mouse.add_var('Venous Blood')
+	mouse.add_var('Lung')
+	mouse.add_var('Other Tissue')
+	# mouse.add_var('Fat')
+	# mouse.add_var('Bone')
+	# mouse.add_var('Brain')
+	# mouse.add_var('Heart')
+	# mouse.add_var('Muscle')
+	# mouse.add_var('Skin')
+	mouse.add_var('Liver')
+	mouse.add_var('Kidney')
+	mouse.add_var('Gut')
+	mouse.add_var('Spleen')
+	mouse.add_var('Arterial Blood')
 
-# define all flows from https://www.sciencedirect.com/science/article/pii/S221138351630082X
-
-# venous flows
-mouse.add_flow('Venous Blood', 'Lung', lambda x: 1.0*x)
-mouse.add_flow('Fat', 'Venous Blood', lambda x: 1.0*x)
-mouse.add_flow('Bone', 'Venous Blood', lambda x: 1.0*x)
-mouse.add_flow('Brain', 'Venous Blood', lambda x: 1.0*x)
-mouse.add_flow('Heart', 'Venous Blood', lambda x: 1.0*x)
-mouse.add_flow('Muscle', 'Venous Blood', lambda x: 1.0*x)
-mouse.add_flow('Skin', 'Venous Blood', lambda x: 1.0*x)
-mouse.add_flow('Liver', 'Venous Blood', lambda x: 1.0*x)
-mouse.add_flow('Kidney', 'Venous Blood', lambda x: 1.0*x)
-
-# arterial flows
-mouse.add_flow('Lung', 'Arterial Blood', lambda x: 1.0*x)
-mouse.add_flow('Arterial Blood', 'Fat', lambda x: 1.0*x)
-mouse.add_flow('Arterial Blood', 'Bone', lambda x: 1.0*x)
-mouse.add_flow('Arterial Blood', 'Brain', lambda x: 1.0*x)
-mouse.add_flow('Arterial Blood', 'Heart', lambda x: 1.0*x)
-mouse.add_flow('Arterial Blood', 'Muscle', lambda x: 1.0*x)
-mouse.add_flow('Arterial Blood', 'Skin', lambda x: 1.0*x)
-mouse.add_flow('Arterial Blood', 'Gut', lambda x: 1.0*x)
-mouse.add_flow('Arterial Blood', 'Liver', lambda x: 1.0*x)
-mouse.add_flow('Arterial Blood', 'Spleen', lambda x: 1.0*x)
-mouse.add_flow('Arterial Blood', 'Kidney', lambda x: 1.0*x)
-
-# other flows
-mouse.add_flow('Gut', 'Liver', lambda x: 1.0*x)
-mouse.add_flow('Spleen', 'Liver', lambda x: 1.0*x)
-
-# define metabolic rates
-mouse.get_var('Liver').metabolic_fn = lambda x: -0.5*x
-mouse.get_var('Kidney').metabolic_fn = lambda x: -0.5*x
+	# define all flows from https://www.sciencedirect.com/science/article/pii/S221138351630082X
 
 
+	d_art = .1
+	d_ven = .1
+
+	# venous flows
+	mouse.add_flow('Venous Blood', 'Lung', lambda x: 1.0*x)
+	mouse.add_flow('Other Tissue', 'Venous Blood', lambda x:d_ven*x)
+	# mouse.add_flow('Fat', 'Venous Blood', lambda x: 1.0*x)
+	# mouse.add_flow('Bone', 'Venous Blood', lambda x: 1.0*x)
+	# mouse.add_flow('Brain', 'Venous Blood', lambda x: 1.0*x)
+	# mouse.add_flow('Heart', 'Venous Blood', lambda x: 1.0*x)
+	# mouse.add_flow('Muscle', 'Venous Blood', lambda x: 1.0*x)
+	# mouse.add_flow('Skin', 'Venous Blood', lambda x: 1.0*x)
+	mouse.add_flow('Liver', 'Venous Blood', lambda x: d_ven*x)
+	mouse.add_flow('Kidney', 'Venous Blood', lambda x: d_ven*x)
+
+	# arterial flows
+	mouse.add_flow('Lung', 'Arterial Blood', lambda x: 1.0*x)
+	mouse.add_flow('Arterial Blood', 'Other Tissue', lambda x:d_art*x)
+	# mouse.add_flow('Arterial Blood', 'Fat', lambda x: 1.0*x)
+	# mouse.add_flow('Arterial Blood', 'Bone', lambda x: 1.0*x)
+	# mouse.add_flow('Arterial Blood', 'Brain', lambda x: 1.0*x)
+	# mouse.add_flow('Arterial Blood', 'Heart', lambda x: 1.0*x)
+	# mouse.add_flow('Arterial Blood', 'Muscle', lambda x: 1.0*x)
+	# mouse.add_flow('Arterial Blood', 'Skin', lambda x: 1.0*x)
+	mouse.add_flow('Arterial Blood', 'Gut', lambda x: d_art*x)
+	mouse.add_flow('Arterial Blood', 'Liver', lambda x: d_art*x)
+	mouse.add_flow('Arterial Blood', 'Spleen', lambda x: d_art*x)
+	mouse.add_flow('Arterial Blood', 'Kidney', lambda x: d_art*x)
+
+	# other flows
+	mouse.add_flow('Gut', 'Liver', lambda x: 1.0*x)
+	mouse.add_flow('Spleen', 'Liver', lambda x: 1.0*x)
+
+	# define metabolic rates
+	mouse.get_var('Liver').metabolic_fn = lambda x: -0.5*x
+	mouse.get_var('Kidney').metabolic_fn = lambda x: -0.5*x
 
 
+	return mouse
 
+def simple_mouse():
+
+	mouse = OrganModel()
+
+	# make state vars
+	mouse.add_var('Venous Blood')
+	mouse.add_var('Lung')
+	mouse.add_var('Other Tissue')
+	mouse.add_var('Kidney')
+	mouse.add_var('Spleen')
+	mouse.add_var('Arterial Blood')
+
+	# define all flows from https://www.sciencedirect.com/science/article/pii/S221138351630082X
+
+
+	d_art = .1
+	d_ven = .1
+
+	# venous flows
+	mouse.add_flow('Venous Blood', 'Lung', lambda x: 1.0*x)
+	mouse.add_flow('Other Tissue', 'Venous Blood', lambda x:d_ven*x)
+	mouse.add_flow('Kidney', 'Venous Blood', lambda x: d_ven*x)
+
+	# arterial flows
+	mouse.add_flow('Lung', 'Arterial Blood', lambda x: 1.0*x)
+	mouse.add_flow('Arterial Blood', 'Other Tissue', lambda x:d_art*x)
+	mouse.add_flow('Arterial Blood', 'Spleen', lambda x: d_art*x)
+	mouse.add_flow('Arterial Blood', 'Kidney', lambda x: d_art*x)
+
+	mouse.get_var('Kidney').metabolic_fn = lambda x: -0.5*x
+
+
+	return mouse
 
 
 
