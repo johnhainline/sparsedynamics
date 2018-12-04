@@ -66,18 +66,16 @@ def poolData(yin, nVars, polyorder, usesine):
     return df
 
 
-def sparsifyDynamics(Theta, dx, lam, max_iter=1000):
+def sparsifyDynamics(Theta, dx, lam, max_iter=10000):
     '''
     This script runs a Lasso procedure to return a sparse solution to a set of differential equations
-    
-    
     '''
     #%% for now, just set up the optimization problem and use Lasso 
     
     clf  = Lasso(alpha = lam, normalize = True, max_iter=max_iter)
     Xhat = clf.fit(Theta,dx)
-    
-    Xhat_df = pd.DataFrame(Xhat.coef_, columns = Theta.columns)
+
+    Xhat_df = pd.DataFrame(Xhat.coef_, columns=Theta.columns)
     '''
 
     Xhat = []
@@ -88,8 +86,4 @@ def sparsifyDynamics(Theta, dx, lam, max_iter=1000):
     Xhat_df = pd.DataFrame(Xhat, columns = Theta.columns)
     return Xhat_df
     '''
-    
-    
-    
-    
     return Xhat_df
