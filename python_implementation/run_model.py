@@ -2,7 +2,7 @@
 # 12/3/18
 # jam.muskopf@gmail.com
 
-
+import os
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -43,6 +43,21 @@ def optimal_linear_trajectory(X,A,times):
     # resulting soln
     return phi.dot(opt_x0).reshape(shape)
 
+def predicted_linear_trajectory(x0,A,times):
+    # x0 should be np.ndarray
+    # A should be df output by sindy, should be linear
+    # times should be times at which we evaluate x(t)
+    A = A.iloc[:,1:].values
+    transition_matrices = [scipy.linalg.expm(A*t) for t in times]
+    states = [phi.dot(x0) for phi in transition_matrices]
+    trajectory = np.array(states)
+    return trajectory
+
+
+    
+    # resulting soln
+    return phi.dot(opt_x0).reshape(shape)
+
 
 def SINDy(tX, dX, columns, lam=10**-3, polyorder=1, usesine=0, max_iter=1000):
 	# SINDy params
@@ -59,6 +74,15 @@ def SINDy(tX, dX, columns, lam=10**-3, polyorder=1, usesine=0, max_iter=1000):
 
 	return dXh
 
+def SNR(x,noisy,dB=True):
+	rms = lambda v: np.sqrt((np.linalg.norm(v)**2)/len(v))
+	x_rms = rms(x)
+	noise = noisy - x
+	noise_rms = rms(noise)
+
+	snr = (x_rms/noise_rms)**2
+
+	return 10*np.log10(snr) if dB else snr
 
 
 
@@ -87,7 +111,7 @@ arterial_blood_ix = mouse.get_var('Arterial Blood').ix
 
 impulse_mag = 100
 input_fn = lambda t: np.array([gauss_env(t)*int(ix==arterial_blood_ix) for ix in range(n_states)])
-mouse.input_fn = input_fn
+mouse.input_fn = lambda x: 0 #input_fn
 
 
 # # test eval_derivative fn and input fn
@@ -103,27 +127,37 @@ DX = pd.DataFrame(columns=cols)
 
 # SINDy params
 polyorder = 1
-lam = 10**-8
+lam = 10**-5
 usesine = 0
 max_iter=10**6
 plot=True
-noise_power = 1*10**-6
+# noise_power = 1*10**-6
 
-for k in range(50):
+lam_noise = [
+	(2*10**-5, 0),
+	(6*10**-4, 10**-3),     # (5*10**-4, 10**-3)
+	(8*10**-4, 10**-2),
+	(5*10**-3, .05)
+]
+fontsize=20
+
+for i,(lam,noise_power) in enumerate(lam_noise):
 	# intial state
-	x0 = np.zeros(n_states) # 10*np.random.normal(np.zeros(n_states)) + np.array([int(i==arterial_blood_ix)*100 for i in range(n_states)])
+	x0 = np.array([int(i==arterial_blood_ix)*100 for i in range(n_states)]) #np.zeros(n_states) # 10*np.random.normal(np.zeros(n_states)) + np.array([int(i==arterial_blood_ix)*100 for i in range(n_states)])
 	t_start = 0
-	t_end = 10
-	t_step = .005
+	t_end = 70
+	t_step = .05
 	t_span = np.arange(t_start,t_end,t_step)
 
 	# odeint(dynamic func, initial point, time points to evaluate
 	trajectory = odeint(mouse.eval_derivative,x0,t_span)
 
+	scale = trajectory.max()
 
-	# drop t before impulse is gone
-	t_impulse_gone = 1
-	ix_impulse_gone = int((t_impulse_gone-t_start)/t_step)
+
+	# # drop t before impulse is gone
+	# t_impulse_gone = 1
+	# ix_impulse_gone = int((t_impulse_gone-t_start)/t_step)
 
 	# add noise
 	noise = np.random.normal(size=trajectory.shape)*np.sqrt(noise_power)
@@ -131,7 +165,7 @@ for k in range(50):
 
 
 	X = pd.DataFrame(data=noisy_traj, columns=cols)
-	X = X[ix_impulse_gone:]
+	# X = X[ix_impulse_gone:]
 
 	# noise = 1*np.random.normal(size=X.shape)
 	# X = X+noise
@@ -139,6 +173,7 @@ for k in range(50):
 
 	dX = X.diff().dropna().reset_index(drop=True)/t_step
 	tX = X[:-1].reset_index(drop=True)
+	trajectory = trajectory[:-1,:] # trajectory[ix_impulse_gone:-1,:]
 
 
 
@@ -149,15 +184,16 @@ for k in range(50):
 	print('evaluating dynamics...')
 	dXh = SINDy(tX,dX,cols,lam=lam,polyorder=polyorder,usesine=usesine, max_iter=max_iter)
 
-
+	print(dXh)
 
 	tXmat= tX.values
-	t_span=t_span[ix_impulse_gone+1:]
+	t_span=t_span[1:] #t_span[ix_impulse_gone+1:]
 
 
 	# reconstruct x(t_span)
 	if polyorder == 1:
-	    X_s = optimal_linear_trajectory(tXmat,dXh,t_span)
+	    # X_s = optimal_linear_trajectory(tXmat,dXh,t_span)
+	    X_s = predicted_linear_trajectory(x0,dXh,t_span)
 	else:
 
 		# find dynamic_fn: x -> x_dot
@@ -178,7 +214,7 @@ for k in range(50):
 		axes = []
 		nplots = len(cols)
 
-		fig = plt.figure(figsize = (1+nplots//nc, nc))
+		fig = plt.figure(figsize=(28,20))
 		# gs1 = gridspec.GridSpec(1+nplots//nc, nc)
 		# gs1.update(wspace=0.025, hspace=0.025)
 
@@ -189,23 +225,31 @@ for k in range(50):
 
 			sim_arr = X_s[:,k]
 			orig_arr = tXmat[:,k]
-			
-			# scale for MSE
-			scale = max([sim_arr.max(),orig_arr.max()])
-			sim_arr = sim_arr/scale #np.linalg.norm(sim_arr)
-			orig_arr = orig_arr/scale #np.linalg.norm(orig_arr)
+			ideal_arr = trajectory[:,k]
+
+			in_snr = SNR(ideal_arr, orig_arr)
+			out_snr = SNR(ideal_arr, sim_arr)
+			# sim_arr = sim_arr/scale #np.linalg.norm(sim_arr)
+			# orig_arr = orig_arr/scale #np.linalg.norm(orig_arr)
 
 			mse = (np.linalg.norm(sim_arr-orig_arr)**2)/len(sim_arr)
+
+
 			ax1.plot(t_span,sim_arr)
 			ax1.plot(t_span,orig_arr)
-			ax1.set_title('{}; MSE: {} '.format(cols[k],'%.2E' % Decimal(mse)),fontsize=10)
-
+			ax1.plot(t_span,ideal_arr)
+			ax1.set_title('{}; input SNR {:.2f} dB; output SNR {:.2f}'.format(cols[k], in_snr, out_snr),fontsize=fontsize)
+			ax1.set_xlabel('Time', fontsize=fontsize)
+			ax1.set_ylabel('Intensity',fontsize=fontsize)
+			for tick in ax1.xaxis.get_major_ticks() + ax1.yaxis.get_major_ticks():
+				tick.label.set_fontsize(fontsize) 
 		plt.subplots_adjust(wspace=.5, hspace=.5)
-		plt.legend(['reconstructed','original'],loc=9, bbox_to_anchor=(2, .5))
-
+		plt.legend(['reconstructed','noisy', 'original'],loc=9, bbox_to_anchor=(2, .5),fontsize=fontsize+4)
+		plt.suptitle('Lambda = ' + '%.1E' % Decimal(lam),fontsize=fontsize)
 		# plt.tight_layout()
-		plt.show()
-
+		
+		# plt.show()
+		plt.savefig(os.path.join('plots','{}.png'.format(i)))
 
 		# for x in range(len(cols)):
 		# 	begin_off = 0

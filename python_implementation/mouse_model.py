@@ -142,9 +142,12 @@ def real_mouse():
 
 	d_art = .1
 	d_ven = .1
+	d_lung = .3
+	d_liv = .1
+	metab = -.05
 
 	# venous flows
-	mouse.add_flow('Venous Blood', 'Lung', lambda x: 1.0*x)
+	mouse.add_flow('Venous Blood', 'Lung', lambda x: d_lung*x)
 	mouse.add_flow('Other Tissue', 'Venous Blood', lambda x:d_ven*x)
 	# mouse.add_flow('Fat', 'Venous Blood', lambda x: 1.0*x)
 	# mouse.add_flow('Bone', 'Venous Blood', lambda x: 1.0*x)
@@ -156,7 +159,7 @@ def real_mouse():
 	mouse.add_flow('Kidney', 'Venous Blood', lambda x: d_ven*x)
 
 	# arterial flows
-	mouse.add_flow('Lung', 'Arterial Blood', lambda x: 1.0*x)
+	mouse.add_flow('Lung', 'Arterial Blood', lambda x: .01*d_lung*x)
 	mouse.add_flow('Arterial Blood', 'Other Tissue', lambda x:d_art*x)
 	# mouse.add_flow('Arterial Blood', 'Fat', lambda x: 1.0*x)
 	# mouse.add_flow('Arterial Blood', 'Bone', lambda x: 1.0*x)
@@ -170,12 +173,12 @@ def real_mouse():
 	mouse.add_flow('Arterial Blood', 'Kidney', lambda x: d_art*x)
 
 	# other flows
-	mouse.add_flow('Gut', 'Liver', lambda x: 1.0*x)
-	mouse.add_flow('Spleen', 'Liver', lambda x: 1.0*x)
+	mouse.add_flow('Gut', 'Liver', lambda x: d_liv*x)
+	mouse.add_flow('Spleen', 'Liver', lambda x: d_liv*x)
 
 	# define metabolic rates
-	mouse.get_var('Liver').metabolic_fn = lambda x: -0.5*x
-	mouse.get_var('Kidney').metabolic_fn = lambda x: -0.5*x
+	mouse.get_var('Liver').metabolic_fn = lambda x: metab*x
+	mouse.get_var('Kidney').metabolic_fn = lambda x: metab*x
 
 
 	return mouse
